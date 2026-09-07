@@ -33,49 +33,59 @@ return [
     ],
 
     /*
-     * کلیدهایِ محتملِ تنظیماتِ Loop Gridِ المنتور پرو — به‌ترتیبِ اولویت.
-     * اولین کلیدی که در تنظیماتِ *واقعیِ* آن نمونهٔ ویجت پیدا شد برنده
-     * است. برایِ کشفِ کلیدِ واقعی: ‎wp zig3d dump-element <id>‎.
+     * کلیدهایِ تنظیماتِ ویجت‌هایِ گرید — **همه از دادهٔ زندهٔ همین سایت
+     * تأیید شده‌اند** (کاوشِ تنظیماتِ خامِ ویجت‌ها)، نه حدس.
+     *
+     * چیزی که کاوش نشان داد: ویجتِ «محصولاتِ منتخب»یِ صفحهٔ اصلی
+     * (‎loop-grid‎، رویِ خودِ پستِ صفحهٔ اصلی) **انتخابِ دستی ندارد** —
+     * یک کوئریِ پویا رویِ ‎post_query_post_type = 'product'‎ است. پس
+     * مسیرِ «شناسه‌هایِ دستی» به‌تنهایی هیچ‌وقت برایِ این صفحه جواب
+     * نمی‌داد؛ مسیرِ کوئری هم لازم است (نگاه کنید به ‎LoopGrid::query()‎).
+     *
+     * انتخابِ دستی جایِ دیگری *هست* (قالبِ «پرزنت برند»)، با کلیدِ
+     * ‎product_query_posts_ids‎ — پس هر دو مسیر واقعی‌اند.
      */
     'loop_grid' => [
-        'manual_id_keys' => ['posts_ids', 'query_posts_ids', 'jet_manual_selection_ids', 'query_1_posts_ids', 'manual_ids'],
-        'per_page_keys'  => ['posts_per_page', 'query_posts_per_page', 'jet_posts_num'],
-        'orderby_keys'   => ['orderby', 'query_orderby'],
-        'order_keys'     => ['order', 'query_order'],
+        // ترتیب مهم است: کلیدهایِ تأییدشدهٔ این سایت اول
+        'manual_id_keys' => ['product_query_posts_ids', 'post_query_posts_ids', 'posts_ids'],
+        'per_page_keys'  => ['posts_per_page', 'posts_num'],
+        'orderby_keys'   => ['orderby', 'post_query_orderby', 'product_query_orderby'],
+        'order_keys'     => ['order', 'post_query_order', 'product_query_order'],
 
         /*
-         * نامزدهایِ widgetTypeِ ویجتِ «محصولاتِ منتخب» — به‌ترتیبِ
-         * اولویت. **حدسِ مستندشده**: هیچ‌کدام هنوز رویِ دادهٔ زنده
-         * تأیید نشده — اولین ویجتی که widgetTypeش با یکی از این‌ها
-         * جور دربیاید انتخاب می‌شود (چه رویِ خودِ صفحهٔ اصلی، چه داخلِ
-         * یک قالبِ Theme Builder). اگر هیچ‌کدام جور درنیامدند، گره
-         * بدونِ حدس‌زدن حذف می‌شود و Diagnostics دلیلش را می‌گوید — نه
-         * جایگزینیِ خودسرانه با یک آی‌دیِ دیگر. برایِ کشفِ مقدارِ
-         * واقعی: ‎wp zig3d dump-element <id> --post_id=<id>‎.
+         * نوعِ کوئری: ‎'by_id'‎ یعنی انتخابِ دستی، هر مقدارِ دیگری
+         * (‎'product'‎، ‎'current_query'‎، ‎'related'‎، …) یعنی کوئریِ پویا.
+         */
+        'query_type_keys' => ['product_query_post_type', 'post_query_post_type'],
+
+        /*
+         * ‎widgetType‎هایِ *واقعیِ* گریدها رویِ این سایت. ‎loop-grid‎ اول
+         * است چون همان ویجتِ محصولاتِ منتخبِ صفحهٔ اصلی است؛ صفحهٔ اصلی
+         * چند ‎jet-listing-grid‎ی دیگر هم دارد (دسته‌ها، اسلایدرها) که
+         * نباید به‌جایش انتخاب شوند.
          */
         'widget_types' => [
             'loop-grid',
-            'jet-engine-listing-grid',
             'jet-listing-grid',
-            'jet-woo-product-grid',
-            'woocommerce-products',
-            'posts',
+            'loop-carousel',
         ],
     ],
 
     /*
-     * FAQ — کلیدهایِ *واقعیِ* دیتابیس، نه پیش‌فرضِ خودِ ویجت. سطحِ ترم با
-     * یک نشستِ دیباگِ قبلی با کاربر تأیید شد (شاملِ همان تایپویِ
-     * «answere»)؛ سطحِ پست هنوز با پیش‌فرضِ خودِ ویجت است چون شاهدِ
-     * مخالفی ندیدیم.
+     * FAQ — کلیدهایِ *واقعیِ* دیتابیس، هر دو سطح از دادهٔ زنده تأیید
+     * شده (شاملِ همان تایپویِ «answere» که در هر دو سطح تکرار شده).
+     *
+     * سطحِ پست قبلاً حدس بود (‎faq‎/‎faq_question‎/‎faq_answer‎) و **غلط**
+     * از آب درآمد: کلیدِ واقعی ‎zig3d-faq-posts‎ است. با آن حدس، FAQِ
+     * هیچ محصول/نرم‌افزاری هیچ‌وقت خوانده نمی‌شد.
      */
     'faq' => [
         'term_meta_key'  => 'zig3d-faq-terms',
         'term_title'     => 'zig3d-faq-terms-title',
         'term_answer'    => 'zig3d-faq-terms-answere',
-        'post_meta_key'  => 'faq',
-        'post_title'     => 'faq_question',
-        'post_answer'    => 'faq_answer',
+        'post_meta_key'  => 'zig3d-faq-posts',
+        'post_title'     => 'zig3d-faq-posts-title',
+        'post_answer'    => 'zig3d-faq-posts-answere',
         'widget_type'    => 'zig3d-faq',
 
         /*
@@ -112,13 +122,27 @@ return [
         'operating_system_field'  => 'supported_os',
 
         /*
-         * راهنمایِ نصب (ویجتِ ‎jet-listing-dynamic-repeater‎) — **حدسِ
-         * مستندشده**: کلیدِ دقیقِ فیلدِ ریپیتر روی این سایت هنوز از رویِ
-         * دادهٔ زنده تأیید نشده. اگر اشتباه بود، فقط همین دو مقدار را
-         * اصلاح کن — کدِ خواننده جای دیگری تغییر نمی‌خواهد.
+         * راهنمایِ نصب — **از دادهٔ زنده تأیید شد**. تنظیماتِ خامِ ویجتِ
+         * ‎jet-listing-dynamic-repeater‎ رویِ قالبِ «Single Download»:
+         *   dynamic_field_source = 'installation_steps'
+         *   dynamic_field_format = '%step_description%'
+         *
+         * یعنی نامِ فیلدِ ریپیتر درست حدس زده شده بود ولی کلیدِ متنِ هر
+         * مرحله **نه**: ‎step_description‎ است، نه ‎step_text‎. با آن حدس
+         * هیچ مرحله‌ای خوانده نمی‌شد.
          */
         'install_steps_meta'     => 'installation_steps',
-        'install_step_text_key'  => 'step_text',
+        'install_step_text_key'  => 'step_description',
+
+        /** مشخصاتِ سیستم — کلیدهایِ واقعیِ همین CPT */
+        'requirement_fields' => [
+            'processor' => 'required_processor',
+            'gpu'       => 'required_gpu',
+            'ram'       => 'required_ram',
+        ],
+        'brand_field'        => 'software_brand',
+        'file_type_field'    => 'file_type',
+        'architecture_field' => 'system_architecture',
     ],
 
     /** برندِ محصول — سه تاکسونومیِ ممکن (ووکامرسِ ۹٫۴+ و دو افزونهٔ قدیمی‌تر) */
@@ -134,26 +158,43 @@ return [
     ],
 
     /*
-     * بلاگ — کیوردهایِ سئو (رنک‌مث/یوست)، و ارجاعاتِ «این مقاله دربارهٔ
-     * کدام محصول/دسته است» که طبقِ راهنما باید دستی/با یک فیلدِ ادمین
-     * باشد، نه استخراجِ خودکار از متن.
+     * بلاگ.
+     *
+     * ‎focus_keyword_meta‎ رویِ دادهٔ زنده تأیید شد
+     * (‎rank_math_focus_keyword‎ مقدار دارد).
+     *
+     * ‎mentions_*‎ عمداً **خالی** است: کاوشِ متایِ یک نوشتهٔ واقعی نشان
+     * داد هیچ فیلدی برایِ «این مقاله دربارهٔ کدام محصول/دسته است» رویِ
+     * این سایت وجود ندارد. راهنما می‌گوید این ارجاع باید *دستی* باشد نه
+     * استخراجِ خودکار از متن — پس تا وقتی مدیرِ سایت چنین فیلدی نساخته،
+     * ‎mentions‎ اصلاً چاپ نمی‌شود (و ‎Diagnostics‎ دلیلش را می‌گوید).
+     * برایِ فعال‌کردن، فقط کافی است کلیدِ واقعی این‌جا نوشته شود.
      */
     'blog' => [
-        'focus_keyword_meta'      => ['rank_math_focus_keyword', '_yoast_wpseo_focuskw'],
-        'mentions_category_meta' => '_zig3d_mentions_category',
-        'mentions_products_meta' => '_zig3d_mentions_products',
-        'reading_wpm'             => 200,
+        'focus_keyword_meta'     => ['rank_math_focus_keyword', '_yoast_wpseo_focuskw'],
+        'primary_category_meta'  => ['rank_math_primary_category', '_yoast_wpseo_primary_category'],
+        'mentions_category_meta' => '',
+        'mentions_products_meta' => '',
+        'reading_wpm'            => 200,
     ],
 
-    /** فیلدِ ریپیترِ «قابلیت‌های کلیدی» رویِ خودِ محصول (ویجتِ zig3d-feature-showcase) */
+    /*
+     * ریپیترهایِ محصول — همه از دادهٔ زندهٔ یک محصولِ واقعی تأیید شدند.
+     *
+     * ‎documents_meta‎ قبلاً ‎'documents'‎ حدس زده شده بود و **غلط** بود؛
+     * کلیدِ واقعی ‎zig_product_document‎ است. کلیدهایِ *داخلِ* هر ردیف
+     * (آیکون/عنوان/فایل) پیشوندِ مشترکِ همان فیلد را دارند، ولی چون
+     * ریپیترهایِ جت‌اینجین نام‌گذاریِ یکدستی ندارند، خواننده به‌جایِ
+     * تکیه به نامِ دقیق، اولین مقدارِ آدرس‌مانند و اولین متنِ غیرخالی را
+     * برمی‌دارد (نگاه کنید به ‎ProductNode::documents()‎) — پس تغییرِ
+     * نامِ زیرفیلدها این‌جا چیزی را نمی‌شکند.
+     */
     'product' => [
         'feature_showcase_meta' => 'feature_showcase',
-        'documents_meta'        => 'documents',
-        'document_fields'       => [
-            'file'   => 'document_file',
-            'title'  => 'document_title',
-            'format' => 'document_format',
-        ],
+        'documents_meta'        => 'zig_product_document',
+        'specifications_meta'   => 'technical_specifications',
+        'key_benefits_meta'     => 'product_key_benefits',
+        'video_meta'            => 'zig-product-video',
     ],
 
     /*

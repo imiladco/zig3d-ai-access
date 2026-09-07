@@ -490,10 +490,6 @@ final class ProductNode {
             return [];
         }
 
-        $fields = (array) Config::get('product.document_fields', []);
-        $file_key  = (string) ($fields['file'] ?? 'document_file');
-        $title_key = (string) ($fields['title'] ?? 'document_title');
-
         $out = [];
 
         foreach ($rows as $row) {
@@ -501,8 +497,34 @@ final class ProductNode {
                 continue;
             }
 
-            $url = self::attachment_url($row[$file_key] ?? '');
-            $name = trim((string) ($row[$title_key] ?? ''));
+            /*
+             * ریپیترهایِ جت‌اینجین نام‌گذاریِ یکدستی برایِ زیرفیلدها
+             * ندارند (‎zig_product_document_icon‎ کنارِ کلیدهایِ دیگر با
+             * الگویِ متفاوت). به‌جایِ قفل‌شدن به نامِ دقیق — که با اولین
+             * تغییرِ ادمین می‌شکند — از *شکلِ* مقدار تشخیص می‌دهیم:
+             * اولین چیزی که فایلِ قابلِ‌دانلود است، و اولین متنِ ساده
+             * به‌عنوانِ عنوان.
+             */
+            $url = '';
+            $name = '';
+
+            foreach ($row as $cell) {
+                $candidate = self::attachment_url($cell);
+
+                if ('' !== $candidate && '' === $url && !self::is_image($candidate)) {
+                    $url = $candidate;
+
+                    continue;
+                }
+
+                if ('' === $name && is_scalar($cell)) {
+                    $text = trim(wp_strip_all_tags((string) $cell, true));
+
+                    if ('' !== $text && 0 !== strpos($text, 'http')) {
+                        $name = $text;
+                    }
+                }
+            }
 
             if ('' === $url) {
                 continue;
@@ -551,6 +573,13 @@ final class ProductNode {
         }
 
         return $document;
+    }
+
+    /** آیکونِ ردیف، نه خودِ سند — نباید به‌جایِ فایل برداشته شود */
+    private static function is_image(string $url): bool {
+        $extension = strtolower((string) pathinfo(wp_parse_url($url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
+
+        return in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg'], true);
     }
 
     /** @param mixed $raw شناسهٔ پیوست یا خودِ آدرس */

@@ -79,7 +79,7 @@ final class LoopGrid {
      * نال بود یا هیچ کلیدِ نامزدی مقدار نداشت (یعنی ویجت شاید کوئریِ
      * پویا دارد، نه انتخابِ دستی — تصمیمِ نهایی با ‎Provider‎ صداکننده است)
      */
-    public static function manual_ids(?array $settings): array {
+    public static function manual_ids(?array $settings, bool $report = true): array {
         if (null === $settings) {
             return [];
         }
@@ -98,15 +98,100 @@ final class LoopGrid {
             }
         }
 
-        Diagnostics::drop(
-            'loop-grid',
-            sprintf(
-                'none of the configured manual_id_keys (%s) held a non-empty value in the resolved widget settings — run `wp zig3d dump-element <id>` to find the real key and add it to config.php',
-                implode(', ', $keys)
-            )
-        );
+        if ($report) {
+            Diagnostics::drop(
+                'loop-grid',
+                sprintf(
+                    'none of the configured manual_id_keys (%s) held a non-empty value in the resolved widget settings',
+                    implode(', ', $keys)
+                )
+            );
+        }
 
         return [];
+    }
+
+    /**
+     * نوعِ کوئریِ ویجت. ‎'by_id'‎ یعنی انتخابِ دستی؛ هر مقدارِ دیگری
+     * (‎'product'‎، ‎'current_query'‎، ‎'related'‎، …) یعنی کوئریِ پویا.
+     *
+     * @param array<string,mixed>|null $settings
+     */
+    public static function query_type(?array $settings): string {
+        $value = self::first_scalar($settings, (array) Config::get('loop_grid.query_type_keys', []));
+
+        return is_string($value) ? $value : '';
+    }
+
+    /**
+     * شناسهٔ پست‌هایِ ویجت — چه از انتخابِ دستی، چه از کوئریِ پویا.
+     *
+     * ویجتِ «محصولاتِ منتخب»یِ این سایت **انتخابِ دستی ندارد**: کاوشِ
+     * تنظیماتِ خامش نشان داد یک کوئریِ پویا رویِ
+     * ‎post_query_post_type = 'product'‎ است. پس ‎manual_ids()‎ به‌تنهایی
+     * همیشه خالی برمی‌گشت و گره حذف می‌شد. این متد اول انتخابِ دستی را
+     * امتحان می‌کند و اگر نبود، همان کوئری را واقعاً اجرا می‌کند.
+     *
+     * @param array<string,mixed>|null $settings
+     * @return int[]
+     */
+    public static function resolve_ids(?array $settings, string $section = 'loop-grid'): array {
+        if (null === $settings) {
+            return [];
+        }
+
+        $type = self::query_type($settings);
+
+        if ('by_id' === $type || '' === $type) {
+            $ids = self::manual_ids($settings, false);
+
+            if ($ids) {
+                return $ids;
+            }
+        }
+
+        $post_type = self::query_post_type($type);
+
+        if ('' === $post_type) {
+            Diagnostics::drop(
+                $section,
+                sprintf('widget has neither a manual selection nor a resolvable post-type query (query type: "%s")', $type)
+            );
+
+            return [];
+        }
+
+        $query = new \WP_Query([
+            'post_type'           => $post_type,
+            'post_status'         => 'publish',
+            'posts_per_page'      => self::per_page($settings),
+            'orderby'             => self::orderby($settings),
+            'order'               => self::order($settings),
+            'fields'              => 'ids',
+            'no_found_rows'       => true,
+            'ignore_sticky_posts' => true,
+        ]);
+
+        $ids = array_map('intval', (array) $query->posts);
+
+        if (!$ids) {
+            Diagnostics::drop($section, sprintf('the widget query over post type "%s" returned no posts', $post_type));
+        }
+
+        return $ids;
+    }
+
+    /**
+     * نوعِ کوئری → نوعِ پستِ واقعی. مقادیرِ وابسته‌به‌زمینهٔ المنتور
+     * (‎current_query‎/‎related‎) این‌جا معنا ندارند: صفحهٔ اصلی زمینه‌ای
+     * ندارد که «کوئریِ جاری» یا «مرتبط با چه چیزی» از آن دربیاید.
+     */
+    private static function query_post_type(string $type): string {
+        if ('' === $type || in_array($type, ['by_id', 'current_query', 'related'], true)) {
+            return '';
+        }
+
+        return post_type_exists($type) ? $type : '';
     }
 
     /** @param array<string,mixed>|null $settings */

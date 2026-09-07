@@ -4,7 +4,9 @@ namespace Zig3d_AI_Access\Schema;
 use Zig3d_AI_Access\Config;
 use Zig3d_AI_Access\Diagnostics;
 use Zig3d_AI_Access\Schema_Provider;
+use Zig3d_AI_Access\Nodes\ProductNode;
 use Zig3d_AI_Access\Nodes\WebPageNode;
+use Zig3d_AI_Access\Nodes\WebsiteNode;
 use Zig3d_AI_Access\Support\EntityIds;
 use Zig3d_AI_Access\Support\LoopGrid;
 
@@ -139,8 +141,13 @@ final class HomeProvider implements Schema_Provider {
             $items[] = [
                 '@type'    => 'ListItem',
                 'position' => $position,
-                'url'      => $link,
-                'name'     => $term->name,
+                'item'     => [
+                    '@type'    => 'CollectionPage',
+                    '@id'      => EntityIds::category((string) $term->slug),
+                    'name'     => (string) $term->name,
+                    'url'      => (string) $link,
+                    'isPartOf' => WebsiteNode::ref(),
+                ],
             ];
         }
 
@@ -185,10 +192,15 @@ final class HomeProvider implements Schema_Provider {
             return null;
         }
 
-        $ids = LoopGrid::manual_ids($settings);
+        /*
+         * هم انتخابِ دستی، هم کوئریِ پویا. کاوشِ دادهٔ زنده نشان داد
+         * ویجتِ این صفحه از نوعِ دوم است (کوئری رویِ ‎product‎)، پس مسیرِ
+         * «فقط شناسه‌هایِ دستی» هیچ‌وقت برایِ این صفحه جواب نمی‌داد.
+         */
+        $ids = LoopGrid::resolve_ids($settings, 'home.featured-products');
 
         if ([] === $ids) {
-            // دلیلِ دقیق را خودِ LoopGrid::manual_ids() قبلاً با Diagnostics::drop() ثبت کرده
+            // دلیلِ دقیق را خودِ LoopGrid::resolve_ids() ثبت کرده
             return null;
         }
 
@@ -196,12 +208,14 @@ final class HomeProvider implements Schema_Provider {
         $position = 0;
 
         foreach ($ids as $product_id) {
-            $product = function_exists('wc_get_product') ? wc_get_product($product_id) : null;
+            /*
+             * همان ‎ProductNode‎ی صفحاتِ فروشگاه — نه یک شکلِ سبک‌ترِ
+             * محلی. یک محصول باید در صفحهٔ اصلی، آرشیو و صفحهٔ خودش
+             * *همان* موجودیت باشد: همان ‎@id‎، همان برند، همان دسته.
+             */
+            $product = ProductNode::summary((int) $product_id);
 
-            $url  = $product ? $product->get_permalink() : get_permalink($product_id);
-            $name = $product ? $product->get_name() : get_the_title($product_id);
-
-            if (!is_string($url) || '' === $url || !is_string($name) || '' === $name) {
+            if (null === $product) {
                 continue;
             }
 
@@ -210,13 +224,12 @@ final class HomeProvider implements Schema_Provider {
             $items[] = [
                 '@type'    => 'ListItem',
                 'position' => $position,
-                'url'      => $url,
-                'name'     => $name,
+                'item'     => $product,
             ];
         }
 
         if ([] === $items) {
-            Diagnostics::drop('home.featured-products', 'manual_ids resolved but none of the referenced posts/products exist any more');
+            Diagnostics::drop('home.featured-products', 'the widget resolved post IDs but none of them exist any more');
 
             return null;
         }
