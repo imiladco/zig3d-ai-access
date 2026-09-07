@@ -620,9 +620,7 @@ final class Doctor implements Feature_Module {
                 return;
             }
 
-            $parsed = \DateTimeImmutable::createFromFormat(DATE_ATOM, $value);
-
-            if (false === $parsed) {
+            if (!self::is_iso_8601($value)) {
                 $bad[] = sprintf('%s = %s (ISO 8601 نیست)', $key, $value);
             }
         });
@@ -637,6 +635,30 @@ final class Doctor implements Feature_Module {
             sprintf('%s: %d تاریخِ نامعتبر', $label, count($bad)),
             implode(' | ', array_slice($bad, 0, 4)) . ' — همیشه ‎get_post_datetime()‎، هرگز ‎get_the_date()‎ که از فیلترِ تقویمِ جلالی رد می‌شود.'
         )];
+    }
+
+    /**
+     * ISO 8601ی معتبر برایِ یک ‎Date‎ یا ‎DateTime‎ی schema.org.
+     *
+     * نکته‌ای که در اولین اجرایِ سرتاسری خودش را نشان داد: تایپِ
+     * ‎Date‎ی schema.org دقتِ کمتر را هم می‌پذیرد — ‎foundingDate: "2013"‎
+     * کاملاً معتبر است. اگر فقط ‎DATE_ATOM‎ پذیرفته می‌شد، doctor رویِ
+     * *هر* صفحهٔ سایت یک خطایِ کاذب می‌داد و خیلی زود کسی کلاً نگاهش
+     * نمی‌کرد — یک ابزارِ تشخیصی با مثبتِ کاذب همان‌قدر بی‌فایده است که
+     * یک ابزارِ کور.
+     */
+    private static function is_iso_8601(string $value): bool {
+        foreach ([DATE_ATOM, 'Y-m-d\TH:i:s', 'Y-m-d', 'Y-m', 'Y'] as $format) {
+            $parsed = \DateTimeImmutable::createFromFormat('!' . $format, $value);
+
+            // ‎format()‎ی برگشتی باید عیناً همان ورودی باشد، وگرنه PHP
+            // چیزی مثلِ ‎2025-13-45‎ را «تصحیح» کرده و قبول شده
+            if (false !== $parsed && $parsed->format($format) === $value) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
