@@ -112,6 +112,8 @@ return [
      */
     'downloads' => [
         'jetengine_cpt_id'      => 8,
+        /* پشتیبانِ اسلاگ، اگر JetEngine در دسترس نبود — از دادهٔ زنده تأیید شد */
+        'post_type'              => 'downloads',
         'taxonomy'               => 'software-category',
         'download_url_meta'      => 'download_url',
         'gallery_meta'           => 'software_gallery',
