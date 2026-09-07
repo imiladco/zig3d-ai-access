@@ -43,6 +43,37 @@ final class EntityIds {
         return trailingslashit(home_url('/')) . '#category-' . $slug;
     }
 
+    /**
+     * برند — سراسری و اسلاگ‌محور، نه وابسته به صفحه: یک برند رویِ
+     * صفحهٔ محصول، آرشیوِ دسته و صفحهٔ اصلی باید *همان* موجودیت باشد،
+     * وگرنه هر صفحه یک برندِ جدا اعلام می‌کند.
+     */
+    public static function brand(string $slug): string {
+        return trailingslashit(home_url('/')) . '#brand-' . $slug;
+    }
+
+    public static function breadcrumb(string $url): string {
+        return untrailingslashit($url) . '#breadcrumb';
+    }
+
+    public static function faq(string $url): string {
+        return untrailingslashit($url) . '#faq';
+    }
+
+    /** لیستِ آیتم‌هایِ یک صفحه — ‎$suffix‎ برایِ صفحه‌بندی (‎products-page-2‎) */
+    public static function item_list(string $url, string $suffix): string {
+        return untrailingslashit($url) . '#' . $suffix;
+    }
+
+    /**
+     * تصویر — خودِ آدرسِ فایل. عمدی: یک تصویر ممکن است در چند صفحه
+     * بیاید و باید همه‌جا همان یک موجودیت باشد؛ آدرسش پایدارترین
+     * شناسه‌ای است که دارد.
+     */
+    public static function image(string $url): string {
+        return $url;
+    }
+
     /** برایِ گره‌هایِ سراسر-صفحه‌ای بدونِ URLِ مخصوصِ خودشان (مثلِ ‎#featured-products‎) */
     public static function fragment(string $fragment): string {
         return trailingslashit(home_url('/')) . '#' . $fragment;
