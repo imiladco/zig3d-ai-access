@@ -29,6 +29,7 @@ final class Plugin {
     private function __construct() {
         // زیرساختِ عرضی، پیش از هر چیزی که ممکن است از آن استفاده کند
         Support\Cache::boot();
+        Support\Rewrite::boot();
 
         $this->load_providers();
 

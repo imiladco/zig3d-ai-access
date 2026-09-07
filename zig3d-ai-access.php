@@ -77,6 +77,20 @@ function zig3d_ai_access_init(): void {
 }
 add_action('plugins_loaded', 'zig3d_ai_access_init');
 
+/**
+ * فعال‌سازی: فقط امضایِ قواعدِ بازنویسی پاک می‌شود تا ‎Support\Rewrite‎
+ * رویِ ‎init‎ی همان درخواست یک بار flush کند.
+ *
+ * چرا خودِ ‎flush_rewrite_rules()‎ این‌جا صدا زده نمی‌شود: در لحظهٔ
+ * فعال‌سازی هنوز ‎init‎ اجرا نشده و قواعدِ ما ثبت نشده‌اند، پس یک flushِ
+ * این‌جا دقیقاً همان قواعدی را که می‌خواهیم جا بیندازیم نمی‌بیند.
+ */
+register_activation_hook(__FILE__, static function (): void {
+    if (class_exists('\Zig3d_AI_Access\Support\Rewrite')) {
+        \Zig3d_AI_Access\Support\Rewrite::on_activation();
+    }
+});
+
 function zig3d_ai_access_notice_php(): void {
     printf(
         '<div class="notice notice-warning is-dismissible"><p>%s</p></div>',
