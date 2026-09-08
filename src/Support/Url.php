@@ -118,25 +118,69 @@ final class Url {
             return false;
         }
 
+        return null === self::environment_leak($url) && self::same_host($host, self::production_host());
+    }
+
+    /**
+     * آیا این نشانی بویِ محیطِ غیرتولید می‌دهد؟ دلیل، یا ‎null‎.
+     *
+     * تفاوتش با ‎is_production()‎ ظریف ولی مهم است و از یک مثبتِ کاذبِ
+     * واقعی در اولین اجرایِ Doctor رویِ سایتِ زنده آمد:
+     *
+     * ‎is_production()‎ می‌پرسد «آیا این نشانیِ *خودِ ما*ست؟» — سؤالِ
+     * درست برایِ چیزی که می‌خواهیم منتشرش کنیم (‎llms.txt‎، IndexNow).
+     *
+     * ولی برایِ *بازرسیِ* یک گراف سؤالِ غلطی است: یک گرافِ سالم پر از
+     * نشانی‌هایِ بیرونیِ کاملاً مشروع است — فایلِ نصبِ نرم‌افزار رویِ
+     * CDN، پروفایلِ شبکهٔ اجتماعی، ‎schema.org‎ خودش. اگر «بیرونی» را
+     * «نشتی» بشماریم، Doctor رویِ هر صفحهٔ دانلود ده‌ها خطایِ کاذب
+     * می‌دهد و خیلی زود کسی نگاهش نمی‌کند.
+     *
+     * پس این متد سؤالِ باریک‌ترِ درست را می‌پرسد: «آیا این نشانی به یک
+     * *محیطِ* اشتباه اشاره می‌کند؟» — استیج، لوکال، دامنهٔ نمونه. یک
+     * میزبانِ ثالثِ ناشناخته جواب ‎null‎ می‌گیرد، چون ناشناخته‌بودن
+     * جرم نیست.
+     *
+     * فهرستِ پیشوندها همان است، پس ‎stage.zig3d.com‎ گرفته می‌شود بدونِ
+     * اینکه لازم باشد زیردامنه‌هایِ مشروعِ خودمان (مثلِ یک CDN) قربانی
+     * شوند.
+     */
+    public static function environment_leak(string $url): ?string {
+        $host = self::host_of($url);
+
+        if ('' === $host) {
+            return null;
+        }
+
         foreach (self::NEVER_PRODUCTION_HOSTS as $bad) {
             if ($host === $bad) {
-                return false;
+                return 'لوکال‌هاست';
             }
+        }
+
+        if (preg_match('/^\d{1,3}(\.\d{1,3}){3}$/', $host)) {
+            return 'آی‌پیِ خام به‌جایِ دامنه';
         }
 
         foreach (self::NEVER_PRODUCTION_SUFFIXES as $suffix) {
             if (self::ends_with($host, $suffix)) {
-                return false;
+                return 'پسوندِ محیطِ توسعه (' . $suffix . ')';
             }
         }
 
         foreach (self::NEVER_PRODUCTION_PREFIXES as $prefix) {
             if (0 === strpos($host, $prefix)) {
-                return false;
+                return 'زیردامنهٔ استیج/توسعه (' . rtrim($prefix, '.') . ')';
             }
         }
 
-        return self::same_host($host, self::production_host());
+        foreach (['example.com', 'example.org', 'example.net'] as $sample) {
+            if ($host === $sample || self::ends_with($host, '.' . $sample)) {
+                return 'دامنهٔ نمونه';
+            }
+        }
+
+        return null;
     }
 
     /**

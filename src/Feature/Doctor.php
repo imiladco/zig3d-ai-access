@@ -365,23 +365,46 @@ final class Doctor implements Feature_Module {
             }
         }
 
-        $training_state = Robots::training_allowed() ? 'باز' : 'بسته';
-        $closed = 0;
+        $training = Robots::training_crawlers();
+        $closed   = 0;
 
-        foreach (Robots::training_crawlers() as $bot) {
+        foreach ($training as $bot) {
             if (in_array('/', $policy[$bot]['disallow'] ?? [], true)) {
                 $closed++;
             }
         }
 
-        $out[] = self::result(
-            $group,
-            self::INFO,
-            sprintf('خزنده‌هایِ آموزشِ مدل: %s (%d از %d)', $training_state, $closed, count(Robots::training_crawlers())),
-            Robots::training_allowed() ? 'با تصمیمِ صریح باز شده‌اند.' : 'پیش‌فرضِ افزونه؛ با ‎robots.allow_training‎ قابلِ‌تغییر است.'
-        );
+        /*
+         * این خط قبلاً فقط INFO بود و *سیاستِ پیکربندی‌شده* را می‌گفت،
+         * در حالی که شمارنده واقعیتِ متفاوتی نشان می‌داد. رویِ سایتِ
+         * زنده همین اتفاق افتاد: «بسته (۰ از ۶)» — یعنی سیاست بسته
+         * بود ولی هیچ خزنده‌ای واقعاً بسته نبود. یک گزارشِ تشخیصی که
+         * تضادِ سیاست و واقعیت را به‌عنوانِ «اطلاعات» رد کند، همان
+         * شکستِ بی‌صداست.
+         */
+        if (Robots::training_allowed()) {
+            $out[] = self::result($group, self::INFO, sprintf('خزنده‌هایِ آموزشِ مدل باز هستند (%d از %d بسته)', $closed, count($training)), 'با تصمیمِ صریحِ مدیرِ سایت.');
+        } elseif ($closed === count($training)) {
+            $out[] = self::result($group, self::OK, sprintf('هر %d خزندهٔ آموزشِ مدل بسته است', count($training)), '');
+        } else {
+            $open = [];
 
-        return $out;
+            foreach ($training as $bot) {
+                if (!in_array('/', $policy[$bot]['disallow'] ?? [], true)) {
+                    $open[] = $bot;
+                }
+            }
+
+            $out[] = self::result(
+                $group,
+                self::FAIL,
+                sprintf('سیاست «آموزش بسته» است ولی فقط %d از %d واقعاً بسته‌اند', $closed, count($training)),
+                sprintf('هنوز باز: %s — یعنی سایت دارد به آموزشِ مدل رضایت می‌دهد. معمولاً یعنی robots.txt از جایِ دیگری سرو می‌شود.', implode('، ', $open))
+            );
+        }
+
+        // همین اسکن رویِ سایتِ زنده یک ‎Sitemap:‎ی استیج را در robots.txt پیدا کرد
+        return array_merge($out, self::scan_text($group . ' — نشتِ محیط', $body));
     }
 
     /**
@@ -690,20 +713,27 @@ final class Doctor implements Feature_Module {
 
         if (preg_match_all('#https?://[^\s"\'<>)\]]+#', $text, $m)) {
             foreach (array_unique($m[0]) as $candidate) {
-                // فقط نشانی‌هایِ خودمان مهم‌اند؛ ‎schema.org‎ و شبکه‌هایِ
-                // اجتماعی طبیعتاً بیرونی‌اند
-                if (self::is_external_reference($candidate)) {
-                    continue;
-                }
+                /*
+                 * سؤال «آیا این نشانیِ خودِ ماست؟» نیست — یک گرافِ سالم
+                 * پر از نشانیِ بیرونیِ مشروع است (فایلِ نصب رویِ CDN،
+                 * پروفایلِ شبکهٔ اجتماعی). سؤال این است که آیا به یک
+                 * *محیطِ* اشتباه اشاره می‌کند: استیج، لوکال، دامنهٔ نمونه.
+                 */
+                $leak = Url::environment_leak($candidate);
 
-                if (!Url::is_production($candidate)) {
-                    $found[] = $candidate;
+                if (null !== $leak) {
+                    $found[] = sprintf('%s (%s)', $candidate, $leak);
                 }
             }
         }
 
         if ($found) {
-            $out[] = self::result($group, self::FAIL, sprintf('%d نشانیِ غیرتولید', count($found)), implode(' | ', array_slice($found, 0, 4)));
+            $out[] = self::result(
+                $group,
+                self::FAIL,
+                sprintf('%d نشانی به محیطِ اشتباه اشاره می‌کند', count($found)),
+                implode(' | ', array_slice($found, 0, 4))
+            );
         }
 
         $lower = strtolower($text);
@@ -720,24 +750,6 @@ final class Doctor implements Feature_Module {
         }
 
         return $out;
-    }
-
-    private static function is_external_reference(string $url): bool {
-        $host = (string) wp_parse_url($url, PHP_URL_HOST);
-
-        foreach (['schema.org', 'instagram.com', 'twitter.com', 'x.com', 'facebook.com', 'youtube.com', 'aparat.com', 'linkedin.com', 'telegram.me', 't.me'] as $allowed) {
-            if ($host === $allowed || self::ends_with($host, '.' . $allowed)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static function ends_with(string $haystack, string $needle): bool {
-        $len = strlen($needle);
-
-        return 0 !== $len && substr($haystack, -$len) === $needle;
     }
 
     /* -------------------------------------------------------------- ابزار */
