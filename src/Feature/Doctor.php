@@ -60,6 +60,15 @@ final class Doctor implements Feature_Module {
         if (defined('WP_CLI') && WP_CLI && class_exists('WP_CLI')) {
             \WP_CLI::add_command('zig3d doctor', [self::class, 'run']);
         }
+
+        /*
+         * صفحهٔ ادمین همان چک‌ها را با دکمه اجرا می‌کند. رویِ هاستِ
+         * اشتراکیِ این سایت WP-CLI در دسترس نیست، و یک ابزارِ تشخیصی
+         * که نمی‌شود اجرایش کرد یعنی ابزارِ تشخیصی نداریم.
+         */
+        if (is_admin() && (bool) Config::get('doctor.admin_page', true)) {
+            \Zig3d_AI_Access\Admin\DoctorPage::boot();
+        }
     }
 
     /* ---------------------------------------------------------------- CLI */
@@ -829,7 +838,14 @@ final class Doctor implements Feature_Module {
      * @return array{code:int,content_type:string,body:string}|null
      */
     private static function fetch(string $url, string $user_agent = ''): ?array {
-        $args = ['timeout' => 15, 'redirection' => 3, 'sslverify' => true];
+        // رویِ هاستِ اشتراکی سقفِ زمانِ اجرا کوتاه است و این دستور تا
+        // ~۲۰ درخواست می‌زند؛ تایم‌اوتِ سخاوتمندانه یعنی صفحه نیمه‌کاره
+        // می‌ماند. اکثرِ پاسخ‌ها زیرِ یک ثانیه‌اند، پس ۸ ثانیه سقفِ منطقی است.
+        $args = [
+            'timeout'     => max(1, (int) Config::get('doctor.timeout', 8)),
+            'redirection' => 3,
+            'sslverify'   => true,
+        ];
 
         if ('' !== $user_agent) {
             $args['user-agent'] = $user_agent;

@@ -3,7 +3,7 @@
  * Plugin Name:       ZIG3D AI Access
  * Plugin URI:        https://zig3d.com
  * Description:       لایهٔ دسترسیِ هوشِ مصنوعیِ سایتِ زیگ: Schema.org (JSON-LD) اختصاصی، ‎/llms.txt‎، سیاستِ خزنده‌ها در robots.txt، و IndexNow — هماهنگ با ساختار داده و ویجت‌های اختصاصیِ این سایت. sitemap و canonical و متا همچنان کارِ افزونهٔ سئو می‌مانند.
- * Version:           2.1.0
+ * Version:           2.1.1
  * Author:            imiladco
  * Author URI:        https://zig3d.com
  * Text Domain:       zig3d-ai-access
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('ZIG3D_AI_ACCESS_VERSION', '2.1.0');
+define('ZIG3D_AI_ACCESS_VERSION', '2.1.1');
 define('ZIG3D_AI_ACCESS_FILE', __FILE__);
 define('ZIG3D_AI_ACCESS_PATH', plugin_dir_path(__FILE__));
 define('ZIG3D_AI_ACCESS_URL', plugin_dir_url(__FILE__));
